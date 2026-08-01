@@ -317,10 +317,8 @@ export async function smokeStory(page, baseUrl, job, options = {}) {
       },
       { checks: job.checks ?? [], colorScheme: job.colorScheme ?? 'light' },
     );
-    if (result !== true) {
-      browserFailures.push(...result.failures);
-      if (!result.hasContent) browserFailures.push('story root rendered empty content');
-    }
+    browserFailures.push(...result.failures);
+    if (!result.hasContent) browserFailures.push('story root rendered empty content');
     if (browserFailures.length > 0) {
       throw new Error(`${prefix} ${browserFailures.join('; ')}`);
     }
@@ -355,7 +353,12 @@ export function catalogJobs(storyIndex, manifestJobs) {
     }));
 }
 
-async function runJobs(browser, baseUrl, jobs, concurrency) {
+/**
+ * Every job is attempted and every story failure is collected, so one broken
+ * story cannot hide the rest behind it. Only an infrastructure failure — a page
+ * that cannot be opened or closed — is allowed to reject and abort the run.
+ */
+export async function runJobs(browser, baseUrl, jobs, concurrency) {
   const queue = [...jobs];
   const failures = [];
   const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {

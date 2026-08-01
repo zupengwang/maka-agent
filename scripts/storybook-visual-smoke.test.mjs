@@ -6,26 +6,36 @@ import {
   PRODUCT_VIEWPORTS,
   catalogJobs,
   installStorybookSmokeProbe,
+  runJobs,
   smokeStory,
 } from './storybook-visual-smoke.mjs';
 
+// The real in-page evaluate always returns this shape; a fake that answers
+// `true` lets a branch survive in the script that production never reaches.
+const RENDERED = { hasContent: true, failures: [] };
+
 class FakePage extends EventEmitter {
-  constructor(onGoto, evaluation = true) {
+  constructor(onGoto, evaluation = RENDERED) {
     super();
     this.onGoto = onGoto;
     this.evaluation = evaluation;
+    this.closed = false;
   }
 
   async addInitScript() {}
   async setViewportSize() {}
   async waitForFunction() {}
 
-  async goto() {
-    this.onGoto?.(this);
+  async goto(url) {
+    this.onGoto?.(this, url);
   }
 
   async evaluate() {
     return this.evaluation;
+  }
+
+  async close() {
+    this.closed = true;
   }
 }
 
@@ -101,5 +111,40 @@ describe('catalog pass', () => {
       size: PRODUCT_VIEWPORTS.wide,
       colorScheme: 'light',
     });
+  });
+});
+
+describe('runJobs', () => {
+  // One broken story must not hide the ones queued behind it: a run that stops
+  // at the first failure reports one problem per CI round, and needs as many
+  // rounds as there are broken stories before it converges.
+  it('attempts every job and collects each story failure', async () => {
+    const ids = ['a--one', 'a--two', 'a--three', 'a--four', 'a--five'];
+    const broken = new Set(['a--two', 'a--five']);
+    const pages = [];
+    const browser = {
+      async newPage() {
+        const page = new FakePage((current, url) => {
+          const storyId = new URL(url).searchParams.get('id');
+          if (broken.has(storyId)) current.emit('pageerror', new Error(`${storyId} exploded`));
+        });
+        pages.push(page);
+        return page;
+      },
+    };
+
+    const failures = await runJobs(
+      browser,
+      'http://storybook.test',
+      ids.map((storyId) => ({ storyId, viewport: 'catalog', size: PRODUCT_VIEWPORTS.wide })),
+      3,
+    );
+
+    assert.equal(pages.length, ids.length);
+    assert.deepEqual(
+      failures.map((message) => message.split(' ')[0]),
+      ['[a--two', '[a--five'],
+    );
+    assert.ok(pages.every((page) => page.closed));
   });
 });
