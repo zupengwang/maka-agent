@@ -70,10 +70,6 @@ function attachment(kind: AttachmentRef['kind'], name: string, mimeType: string,
 
 const imageAttachment = attachment('image', 'dashboard.png', 'image/png', 480_000);
 const metricsAttachment = attachment('image', 'metrics.png', 'image/png', 920_000);
-const pdfAttachment = attachment('pdf', 'design-spec.pdf', 'application/pdf', 512_000);
-const docAttachment = attachment('doc', '周报.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 128_000);
-const codeAttachment = attachment('code', 'handler.ts', 'text/typescript', 4_096);
-const otherAttachment = attachment('other', 'archive.zip', 'application/zip', 88_000);
 
 const baseComposer: ComposerProps = {
   draftKey: 'storybook-attachments',
@@ -155,19 +151,6 @@ export const ComposerPendingChips: Story = {
   ),
 };
 
-// Real path: send a message with attachments → the chips as they render inside the sent
-// turn.
-export const ChatAttachmentChips: Story = {
-  render: () => (
-    <Frame>
-      <ChatView
-        {...baseChat}
-        messages={[user('u1', 't1', '帮我看下这几个文件，哪些要改。', [pdfAttachment, docAttachment, codeAttachment, otherAttachment])]}
-      />
-    </Frame>
-  ),
-};
-
 // Real path: attach images → their thumbnails in the sent turn.
 export const ImageThumbnails: Story = {
   render: () => (
@@ -180,35 +163,3 @@ export const ImageThumbnails: Story = {
   ),
 };
 
-// Real path: attach a file → the skeleton shown while its bytes are still being
-// ingested.
-export const PendingSkeleton: Story = {
-  render: () => (
-    <Frame>
-      {/* No reader wired — the thumbnail stays in the pending skeleton state. */}
-      <ChatView
-        {...baseChat}
-        onReadAttachmentBytes={undefined}
-        messages={[user('u3', 't3', '这张图还在读。', [attachment('image', 'loading.png', 'image/png', 1024)])]}
-      />
-    </Frame>
-  ),
-};
-
-// Real path: click an image attachment in a turn → the lightbox.
-export const Lightbox: Story = {
-  render: () => (
-    <Frame>
-      <ChatView
-        {...baseChat}
-        messages={[user('u4', 't4', '点击图片放大查看。', [imageAttachment])]}
-      />
-    </Frame>
-  ),
-  play: async ({ canvasElement }) => {
-    await new Promise((resolve) => window.requestAnimationFrame(resolve));
-    await new Promise((resolve) => window.setTimeout(resolve, 100));
-    const btn = canvasElement.querySelector<HTMLButtonElement>('button[aria-label^="查看图片"]');
-    btn?.click();
-  },
-};
