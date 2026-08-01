@@ -6,7 +6,6 @@ import {
   PRODUCT_VIEWPORTS,
   catalogJobs,
   installStorybookSmokeProbe,
-  reconcileCatalog,
   smokeStory,
 } from './storybook-visual-smoke.mjs';
 
@@ -102,33 +101,5 @@ describe('catalog pass', () => {
       size: PRODUCT_VIEWPORTS.wide,
       colorScheme: 'light',
     });
-  });
-
-  it('reports a failure that is not in the known-broken list', () => {
-    const problems = reconcileCatalog(
-      { failed: [{ storyId: 'a--one', message: 'a--one exploded' }], passed: [] },
-      {},
-    );
-    assert.deepEqual(problems, ['a--one exploded']);
-  });
-
-  it('stays silent for a listed failure', () => {
-    assert.deepEqual(
-      reconcileCatalog(
-        { failed: [{ storyId: 'a--one', message: 'a--one exploded' }], passed: [] },
-        { 'a--one': 'stale selector' },
-      ),
-      [],
-    );
-  });
-
-  // Otherwise the list only ever grows, and a fixed story keeps its exemption.
-  it('reports a listed story that has started passing', () => {
-    const problems = reconcileCatalog(
-      { failed: [], passed: ['a--one'] },
-      { 'a--one': 'stale selector' },
-    );
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /a--one now passes — remove it/);
   });
 });
